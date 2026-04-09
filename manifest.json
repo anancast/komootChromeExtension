@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Komoot extension",
+  "description": "download user routes",
+  "version": "1.0",
+  "permissions": [
+  ],
+  "host_permissions": [
+     "*://*.www.komoot.com/"
+   ],
+   "content_scripts": [
+    {
+      "matches": ["*://*.www.komoot.com/*"],
+      "js": ["content-script.js"]
+    }
+  ]
+}
