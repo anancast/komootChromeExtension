@@ -16,36 +16,30 @@ let komootExtension = {
 		collection:"collection-more-actions-toggle"
 	},
 	checkMenuButton: function(type){
-		if(komootExtension.checkTimeout){
-			clearTimeout(komootExtension.checkTimeout);
-		}
-		if(!komootExtension.config.menuButton || document.body.contains(komootExtension.config.menuButton) == false){
-			let button = document.querySelector('[data-test-id="'+ komootExtension.buttonTypes[type] +'"]');
-			if(button){
-				komootExtension.config.menuButton = button;
-				komootExtension.addDownloadRoutesButton();
+		let page = document.querySelector('.page');
+		let observer = new MutationObserver(mutations => {
+			komootExtension.config.menuButton = document.querySelector('[data-test-id="'+ komootExtension.buttonTypes[type] +'"]');
+			if(!komootExtension.config.menuButton){
+				return true;
 			}
-		}
-		komootExtension.checkTimeout = setTimeout(function(){komootExtension.checkMenuButton(type)}, 1000);
+			mutations.forEach(mutation => {
+				if(mutation.type === 'childList' && mutation.target.className == komootExtension.config.menuButton.parentElement.className && mutation.addedNodes.length !== 0){
+					komootExtension.addDownloadRoutesButton(mutation.addedNodes[0]);
+				}
+			});
+		});
+		observer.observe(page, {childList: true, subtree:true});
 	},
-	addDownloadRoutesButton: function(){
-		komootExtension.config.menuButton.addEventListener((komootExtension.config.userId) ? "click" : "mouseover", (event) => {
-			setTimeout(function(){
-				let button = event.target.closest("div").querySelector('button[role="menuitem"]');
-				if(!button){
-					return;
-				}
-				if(komootExtension.downloadButton && document.body.contains(komootExtension.downloadButton)){
-					komootExtension.downloadButton.parentNode.removeChild(komootExtension.downloadButton);
-				}
-				komootExtension.downloadButton = document.createElement("button");
-				komootExtension.downloadButton.classList = button.classList;
-				komootExtension.downloadButton.innerHTML = button.innerHTML.replace(/>[\s\S]*</, ">Download activities<");
-				komootExtension.downloadButton.addEventListener("click", komootExtension.downloadRoutes);
-				button.parentNode.appendChild(komootExtension.downloadButton);
-				console.log(komootExtension.downloadButton);
-			}, 100);
-		}, {once: (komootExtension.config.userId) ? false : true});
+	addDownloadRoutesButton: function(container){
+		let button = container.querySelector('button[role="menuitem"]');
+		if(!button){
+			return;
+		}
+		komootExtension.downloadButton = document.createElement("button");
+		komootExtension.downloadButton.classList = button.classList;
+		komootExtension.downloadButton.innerHTML = button.innerHTML.replace(/>[\s\S]*</, ">Download activities<");
+		komootExtension.downloadButton.addEventListener("click", komootExtension.downloadRoutes);
+		button.parentNode.appendChild(komootExtension.downloadButton);
 	},
 	getRoutes: async function(page){
 		let routes = [], url;
@@ -72,7 +66,6 @@ let komootExtension = {
 	downloadRoutes: async function(){
 		let defaultContent = komootExtension.config.menuButton.innerHTML;
 		komootExtension.config.menuButton.innerHTML = komootExtension.loader;
-		
 		let routes = await komootExtension.getRoutes();
 		if(routes.length == 0){
 			komootExtension.config.menuButton.innerHTML = defaultContent;
@@ -109,6 +102,13 @@ let komootExtension = {
 }
 komootExtension.init();
 
-window.navigation.addEventListener("navigate", (event) => {
-	setTimeout(komootExtension.init, 2000);
+const loadingIndicator = document.querySelector('[data-test-id="page-loading-indicator"]');
+const defaultClassName = loadingIndicator.className;
+const observer = new MutationObserver(mutations => {
+	mutations.forEach(mutation => {
+		if(mutation.type === 'attributes' && mutation.target.classList.contains(defaultClassName)){
+			komootExtension.init();
+		}
+	});
 });
+observer.observe(loadingIndicator, {attributes: true});
