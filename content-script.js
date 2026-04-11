@@ -2,18 +2,25 @@ let komootExtension = {
 	init: function(){
 		komootExtension.config = {};
 		let pathname = window.location.pathname.split("/");
-		if(pathname[1] && pathname[1] == "user"){
+		if(kmtBoot.getProps().page.store.options.username){
+			komootExtension.config.user = kmtBoot.getProps().page.store.options.username;
+		}
+		if(pathname[1] && pathname[1] == "user" && komootExtension.config.user){
 			komootExtension.config.userId = pathname[2];
 			komootExtension.checkMenuButton("user");
 		}
-		if(pathname[1] && pathname[1] == "collection"){
+		if(pathname[1] && pathname[1] == "collection" && komootExtension.config.user){
 			komootExtension.config.collectionId = pathname[2];
 			komootExtension.checkMenuButton("collection");
+		}
+		if(pathname[1] && pathname[1] == "tour" && !komootExtension.config.user){
+			komootExtension.checkMenuButton("tour");
 		}
 	},
 	buttonTypes:{
 		user:"user-follow-menu-trigger",
-		collection:"collection-more-actions-toggle"
+		collection:"collection-more-actions-toggle",
+		tour:"tour-extra-actions-dropdown-toggle"
 	},
 	checkMenuButton: function(type){
 		let page = document.querySelector('.page');
@@ -24,11 +31,20 @@ let komootExtension = {
 			}
 			mutations.forEach(mutation => {
 				if(mutation.type === 'childList' && mutation.target.className == komootExtension.config.menuButton.parentElement.className && mutation.addedNodes.length !== 0){
-					komootExtension.addDownloadRoutesButton(mutation.addedNodes[0]);
+					return (type !== 'tour') ? komootExtension.addDownloadRoutesButton(mutation.addedNodes[0]) : komootExtension.replaceDownloadButton(mutation.addedNodes[0]);
 				}
 			});
 		});
 		observer.observe(page, {childList: true, subtree:true});
+	},
+	replaceDownloadButton: function(container){
+		let button = container.querySelector('button[aria-label="Download GPX"]');
+		if(!button){
+			return;
+		}
+		komootExtension.downloadButton = button.cloneNode(true);
+		komootExtension.downloadButton.addEventListener("click", komootExtension.downloadRoute);
+		button.parentNode.replaceChild(komootExtension.downloadButton, button);
 	},
 	addDownloadRoutesButton: function(container){
 		let button = container.querySelector('button[role="menuitem"]');
@@ -62,6 +78,34 @@ let komootExtension = {
 		}
 		return routes;
 	},
+	downloadRoute: function(){
+		const title = document.querySelector("h1").textContent;
+		const parser = new DOMParser();
+		const gpx = parser.parseFromString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<gpx version=\"1.1\">\n</gpx>", "application/xml");
+		const metadata = gpx.createElement("metadata");
+		const name = gpx.createElement("name");
+		const text = gpx.createTextNode(title);
+		name.appendChild(text);
+		metadata.appendChild(name);
+		const trk = gpx.createElement("trk");
+		gpx.documentElement.appendChild(metadata);
+		trk.appendChild(name);
+		const trkseg = gpx.createElement("trkseg");
+		let points = kmtBoot.getProps().page._syncedAttributes._embedded.tour._embedded.coordinates.items;
+		for(let i = 0, size = points.length; i < size; i++){
+			let point = gpx.createElement("trkpt");
+			point.setAttribute("lat", points[i].lat);
+			point.setAttribute("lon", points[i].lng);
+			let elevation = gpx.createElement('ele');
+			let text = gpx.createTextNode(points[i].alt);
+			elevation.appendChild(text);
+			point.appendChild(elevation);
+			trkseg.appendChild(point);
+		}
+		trk.appendChild(trkseg);
+		gpx.documentElement.appendChild(trk);
+		return komootExtension.outputGpxFile(gpx, title);
+	},
 	downloadRoutes: async function(){
 		let defaultContent = komootExtension.config.menuButton.innerHTML;
 		komootExtension.config.menuButton.innerHTML = komootExtension.loader;
@@ -90,6 +134,9 @@ let komootExtension = {
 			gpx.documentElement.appendChild(gpx.importNode(doc.querySelector("trk"), true));
 		}
 		komootExtension.config.menuButton.innerHTML = defaultContent;
+		return komootExtension.outputGpxFile(gpx, title);
+	},
+	outputGpxFile: function(gpx, title){
 		const serializer = new XMLSerializer();
 		const anchor = document.createElement("a");
 		anchor.href = URL.createObjectURL(new Blob([serializer.serializeToString(gpx)], {type:"application/xml"}));
@@ -103,7 +150,13 @@ let komootExtension = {
 						</circle>\
 					</svg>'
 }
-komootExtension.init();
+
+let initiationCheckTimer = setInterval(() => {
+	if(kmtBoot && kmtBoot.getProps() && kmtBoot.getProps().page.store){
+		clearInterval(initiationCheckTimer);
+		return komootExtension.init();
+	}
+}, 500);
 
 const loadingIndicator = document.querySelector('[data-test-id="page-loading-indicator"]');
 const defaultClassName = loadingIndicator.className;
