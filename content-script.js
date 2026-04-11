@@ -18,7 +18,7 @@ let komootExtension = {
 	checkMenuButton: function(type){
 		let page = document.querySelector('.page');
 		let observer = new MutationObserver(mutations => {
-			komootExtension.config.menuButton = document.querySelector('[data-test-id="'+ komootExtension.buttonTypes[type] +'"]');
+			komootExtension.config.menuButton = document.querySelector(`[data-test-id="${komootExtension.buttonTypes[type]}"]`);
 			if(!komootExtension.config.menuButton){
 				return true;
 			}
@@ -41,14 +41,13 @@ let komootExtension = {
 		komootExtension.downloadButton.addEventListener("click", komootExtension.downloadRoutes);
 		button.parentNode.appendChild(komootExtension.downloadButton);
 	},
-	getRoutes: async function(page){
+	getRoutes: async function(page = 0){
 		let routes = [], url;
-		page = page || 0;
 		if(komootExtension.config.userId){
-			url = "https://www.komoot.com/api/v007/users/"+ komootExtension.config.userId +"/tours/?limit=50&status=public&type=tour_recorded&sort_field=date&sort_direction=desc&page="+ page;
+			url = `https://www.komoot.com/api/v007/users/${komootExtension.config.userId}/tours/?limit=50&status=public&type=tour_recorded&sort_field=date&sort_direction=desc&page=${page}`;
 		}
 		if(komootExtension.config.collectionId){
-			url = "https://www.komoot.com/api/v007/collections/"+ komootExtension.config.collectionId +"/compilation/?limit=50&page="+ page;
+			url = `https://www.komoot.com/api/v007/collections/${komootExtension.config.collectionId}/compilation/?limit=50&page=${page}`;
 		}
 		const response = await fetch(url);
 		const json = await response.json();
@@ -71,7 +70,7 @@ let komootExtension = {
 			komootExtension.config.menuButton.innerHTML = defaultContent;
 			return alert('Routes not found');
 		}
-		let title = (komootExtension.config.userId) ? routes[0]._embedded.creator.display_name : document.querySelector('h1').textContent;
+		let title = (komootExtension.config.userId) ? routes[0]._embedded.creator.display_name : document.querySelector("h1").textContent;
 		const parser = new DOMParser();
 		const gpx = parser.parseFromString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<gpx version=\"1.1\">\n</gpx>", "application/xml");
 		const metadata = gpx.createElement("metadata");
@@ -81,7 +80,7 @@ let komootExtension = {
 		metadata.appendChild(name);
 		gpx.documentElement.appendChild(metadata);
 		for(let i = 0, size = routes.length; i < size; i++){
-			let response = await fetch("https://www.komoot.com/api/v007/tours/"+ routes[i].id +".gpx?hl=en");
+			let response = await fetch(`https://www.komoot.com/api/v007/tours/${routes[i].id}.gpx?hl=en`);
 			let text = await response.text();
 			let doc = parser.parseFromString(text, "text/xml");
 			gpx.documentElement.appendChild(gpx.importNode(doc.querySelector("trk"), true));
