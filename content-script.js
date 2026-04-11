@@ -106,7 +106,7 @@ const defaultClassName = loadingIndicator.className;
 const observer = new MutationObserver(mutations => {
 	mutations.forEach(mutation => {
 		if(mutation.type === 'attributes' && mutation.target.classList.contains(defaultClassName)){
-			komootExtension.init();
+			setTimeout(komootExtension.init, 500);
 		}
 	});
 });
