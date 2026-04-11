@@ -68,7 +68,7 @@ let komootExtension = {
 		let routes = await komootExtension.getRoutes();
 		if(routes.length == 0){
 			komootExtension.config.menuButton.innerHTML = defaultContent;
-			return alert('Routes not found');
+			return window.alert('Routes not found');
 		}
 		let title = (komootExtension.config.userId) ? routes[0]._embedded.creator.display_name : document.querySelector("h1").textContent;
 		const parser = new DOMParser();
@@ -81,6 +81,10 @@ let komootExtension = {
 		gpx.documentElement.appendChild(metadata);
 		for(let i = 0, size = routes.length; i < size; i++){
 			let response = await fetch(`https://www.komoot.com/api/v007/tours/${routes[i].id}.gpx?hl=en`);
+			if(!response.ok){
+				komootExtension.config.menuButton.innerHTML = defaultContent;
+				return window.alert((response.status == 403) ? 'To download you must be a registered user' : `Server error: ${response.status}`);
+			}
 			let text = await response.text();
 			let doc = parser.parseFromString(text, "text/xml");
 			gpx.documentElement.appendChild(gpx.importNode(doc.querySelector("trk"), true));
