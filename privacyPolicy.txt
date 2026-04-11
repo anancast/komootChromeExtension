@@ -1,0 +1,2 @@
+Privacy Policy for komootExtension
+This extension does NOT collect, store, or transmit any personal data, location information, or browsing history. All processing (GPX file generation and downloading) occurs locally within the user's browser. No data is sent to external servers or third parties.
